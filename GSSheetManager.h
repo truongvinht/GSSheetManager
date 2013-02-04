@@ -92,6 +92,13 @@
  */
 - (BOOL)writeSheetToFile:(NSString*)fileName;
 
+/** Method to write the given sheet into the file with given path
+ *  @param fileName is the file name of the sheet
+ *  @param path is the location for the file
+ *  @param true if the sheet was successfully written
+ */
+- (BOOL)writeSheetToFile:(NSString *)fileName inPath:(NSString*)path;
+
 @end
 
 #endif
