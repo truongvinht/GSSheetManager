@@ -18,15 +18,12 @@ and save it into Example.xls file in the default documents folder
 
 ```Objective-C
 GSSheetManager *sheetManager = [[GSSheetManager alloc] initWithAuthor:@"Truong Vinh Tran"];
-
 GSSheetObject *firstPage = [sheetManager addSheet:@"1st page"];
-
 [firstPage addRow:[NSMutableArray arrayWithObjects:@"Name",@"Hans", nil]];
-
 [firstPage addRow:[NSMutableArray arrayWithObjects:@"Points",[NSNumber numberWithDouble:1000], nil]];
-
 [sheetManager writeSheetToFile:@"Example.xls"];
 ```
 
-#Licencse
+#License
+MIT License (MIT)
 
