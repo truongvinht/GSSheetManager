@@ -86,6 +86,11 @@
  */
 - (NSMutableArray*)getAllSheets;
 
+/** Method to genereate the sheet data
+ *	@return the data of the sheet
+ */
+- (NSData*)generateSheet;
+
 /** Method to write the given sheet to file
  *  @param fileName is the file name of the sheet
  *  @return true if the sheet was successfully written
