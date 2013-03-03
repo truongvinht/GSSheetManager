@@ -30,13 +30,14 @@
 @implementation GSSheetObject
 
 @synthesize sheetName;
-@synthesize array;
+@synthesize array,configArray;
 
 - (id)initWithSheetName:(NSString*)name{
   self = [super init];
   if(self){
     self.sheetName = name;
     self.array = [NSMutableArray array];
+    self.configArray = [NSMutableArray array];
   }
   return self;
 }
@@ -44,6 +45,12 @@
 
 - (void)addRow:(NSMutableArray*)entries{
   [self.array addObject:entries];
+  [self.configArray addObject:[NSMutableArray array]];
+}
+
+- (void)addRow:(NSMutableArray*)entries withConfigurations:(NSMutableArray*)configurations{
+  [self.array addObject:entries];
+  [self.configArray addObject:configurations];
 }
 
 - (void)replaceRow:(int)index withArray:(NSMutableArray*)replaceArray{
@@ -131,6 +138,8 @@
   //set created date
   [dataStream appendString:[NSString stringWithFormat:@"<Created>%@</Created></DocumentProperties>\n",[NSDate date]]];
 
+  //add styles for date (week day)
+  [dataStream appendString:@"\n<Styles><Style ss:ID=\"s1\"><NumberFormat ss:Format=\"ddd\"/></Style></Styles>\n"];
 
   //write every sheet page
   for (int i=0;i<self.sheetArray.count;i++) {
@@ -150,16 +159,45 @@
       for (int k=0; k < [[sheet.array objectAtIndex:j] count]; k++) {
         //get the single cell item
         id item = [[sheet.array objectAtIndex:j] objectAtIndex:k];
-
+        
+        
+        NSString *typeString = nil;
+        NSString *contentData = @"";
+        NSString *cellConfiguration = @"";
+        
+        //add cell configuration if available
+        if ([sheet.array count]==[sheet.configArray count]) {
+          if ([[sheet.array objectAtIndex:j] count]==[[sheet.configArray objectAtIndex:j] count]) {
+            cellConfiguration = [[sheet.configArray objectAtIndex:j] objectAtIndex:k];
+          }
+        }
+        
         //item is a string
         if([item isKindOfClass:[NSString class]]){
-          [dataStream appendFormat:@"<Cell><Data ss:Type=\"String\">%@</Data></Cell>",item];
+          typeString = @"String";
+          contentData = item;
         }else if([item isKindOfClass:[NSNumber class]]){
           //item is a number
-          [dataStream appendFormat:@"<Cell><Data ss:Type=\"Number\">%@</Data></Cell>",item];
+          typeString = @"Number";
+          contentData = item;
+        }else if([item isKindOfClass:[NSDate class]]){
+          //item is a date
+          typeString = @"DateTime";
+          
+          //only allow if there is now cellconfigurations (macros)
+          if (!cellConfiguration) {
+            contentData = [NSString stringWithFormat:@"%@",item];
+          }
         }else if([item isKindOfClass:[NSNull class]]){
-          [dataStream appendString:@"<Cell><Data ss:Type=\"String\"></Data></Cell>"];
+          typeString = @"String";
         }
+        
+        //allow short links in the cell as cell configuration
+        if (typeString) {
+          NSString *completeCellString = [NSString stringWithFormat:@"<Cell%@><Data ss:Type=\"%@\">%@</Data></Cell>\n",cellConfiguration,typeString,contentData];
+          [dataStream appendString:completeCellString];
+        }
+        
       }
 
       [dataStream appendString:@"</Row>\n"];

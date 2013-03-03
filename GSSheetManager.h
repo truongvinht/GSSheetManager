@@ -37,6 +37,9 @@
 /// list with all cells in this sheet
 @property(nonatomic,strong) NSMutableArray *array;
 
+/// list with all configurations
+@property(nonatomic,strong) NSMutableArray *configArray;
+
 #pragma mark Methods in GSSheetObject
 
 /** Method to init a new sheet object
@@ -48,6 +51,12 @@
  *  @param entries an array with NSNumber objects as number and NSString as string
  */
 - (void)addRow:(NSMutableArray*)entries;
+
+/** Method to add a row with entries and using configurations
+ *  @param entries an array with NSNumber objects as number and NSString as string
+ *  @param configurations contains links and cell configurations
+ */
+- (void)addRow:(NSMutableArray*)entries withConfigurations:(NSMutableArray*)configurations;
 
 /** Method to replace a row with new antries
  *  @param index is the row position
