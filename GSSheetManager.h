@@ -28,6 +28,7 @@
 
 #import <Foundation/Foundation.h>
 
+
 /*! The Sheet object representates a sheet in the spreadsheet.*/
 @interface GSSheetObject : NSObject
 
@@ -40,6 +41,9 @@
 /// list with all configurations
 @property(nonatomic,strong) NSMutableArray *configArray;
 
+/// list with rows of formatting cells
+@property(nonatomic,strong) NSMutableArray *formatArray;
+
 #pragma mark Methods in GSSheetObject
 
 /** Method to init a new sheet object
@@ -51,6 +55,12 @@
  *  @param entries an array with NSNumber objects as number and NSString as string
  */
 - (void)addRow:(NSMutableArray*)entries;
+
+/** Method to add a row with entries and formats
+ *  @param entries an array with NSNumber objects as number and NSString as string
+ *  @param formatting contains cell formatting, if it contains one item, then it works for the whole row
+ */
+- (void)addRow:(NSMutableArray*)entries withFormatting:(NSMutableArray*)formatting;
 
 /** Method to add a row with entries and using configurations
  *  @param entries an array with NSNumber objects as number and NSString as string
@@ -83,6 +93,16 @@
  *  @return the own object instance
  */
 - (id)initWithAuthor:(NSString*)author;
+
+/** Method to set the default style for the whole table
+ *	@param defaultStyle is a dictionary which carries all attributes (size,fontName,color,bold,italic,underline, backgroundColor)
+ */
+-(void)setDefaultFontStyle:(NSDictionary*)defaultStyle;
+
+/** Method to set the width of the column
+ *	@param list is an array with NSNumbers regarding to its size
+ */
+- (void)setColumnSize:(NSArray*)list;
 
 /** Method to add a new sheetpage
  *  @param sheetName is the new name of the sheet
