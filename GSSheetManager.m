@@ -227,29 +227,20 @@
   
   //no style
   if (!style||[[style allKeys] count]==0) {
-    return @"";
+    return nil;
   }
   
-  if (_styleCounter > 0) {
-    //check wether style is alredy available
-    NSString *oldStyle = nil;
-    
-    for (int i=0; i<_styleCounter; i++) {
-      NSString *oldStyle = [self.styleMap objectForKey:[NSString stringWithFormat:@"GS%d",i]];
-      if (oldStyle) {
-        return oldStyle;
-      }
+  //check wether style is already available
+  for (int i=0; i<_styleCounter; i++) {
+    NSArray *savedInfo = [self.styleMap objectForKey:[NSString stringWithFormat:@"GS%d",i]];
+    if (savedInfo && [[savedInfo objectAtIndex:1] isEqualToDictionary:style]) {
+      return nil;
     }
-    //style could not found
-    if (!oldStyle) {
-      //continue to create new style
-    }
-    
   }
   
   //add new style
   NSString *newStyle = [self parseStyle:style forID:[NSString stringWithFormat:@"GS%d",_styleCounter]];
-  [self.styleMap setObject:newStyle forKey:[NSString stringWithFormat:@"GS%d",_styleCounter]];
+  [self.styleMap setObject:@[newStyle,style] forKey:[NSString stringWithFormat:@"GS%d",_styleCounter]];
   _styleCounter++;
   return newStyle;
 }
@@ -266,29 +257,18 @@
   }
   
   if (_styleCounter > 0) {
-    //check wether style is alredy available
-    NSString *oldStyle = nil;
+    //check wether style is already available
     
     for (int i=0; i<_styleCounter; i++) {
-      NSString *oldStyle = [self.styleMap objectForKey:[NSString stringWithFormat:@"GS%d",i]];
-      if (oldStyle) {
+      NSArray *styleInfo = [self.styleMap objectForKey:[NSString stringWithFormat:@"GS%d",i]];
+      if ([[styleInfo objectAtIndex:1] isEqualToDictionary:style]) {
         return [NSString stringWithFormat:@"GS%d",i];
       }
     }
-    //style could not found
-    if (!oldStyle) {
-      //continue to create new style
-    }
     
   }
-  
-  NSString *styleID = [NSString stringWithFormat:@"GS%d",_styleCounter];
-  
-  //add new style
-  NSString *newStyle = [self parseStyle:style forID:styleID];
-  [self.styleMap setObject:newStyle forKey:styleID];
-  _styleCounter++;
-  return styleID;
+  //style not founded
+  return @"";
 }
 
 - (id)initWithAuthor:(NSString*)author{
@@ -431,7 +411,9 @@
     for (int y=0; y < [sheet.formatArray count]; y++) {
       for (int z=0; z < [[sheet.formatArray objectAtIndex:y] count]; z++) {
         NSString *style = [self getStyleForDict:[[sheet.formatArray objectAtIndex:y] objectAtIndex:z]];
-        [dataStream appendString:style];
+        if (style) {
+          [dataStream appendString:style];
+        }
       }
     }
   }
