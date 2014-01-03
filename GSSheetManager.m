@@ -74,6 +74,22 @@
   [self.formatArray addObject:[NSMutableArray array]];
 }
 
+- (void)addRow:(NSMutableArray*)entries withConfigurations:(NSMutableArray*)configurations withFormatting:(NSArray*)formatting{
+  
+  [self.array addObject:entries];
+  [self.configArray addObject:configurations];
+  
+  //add formatting if available
+  if (formatting&&formatting.count>0) {
+    NSMutableArray *format = [NSMutableArray arrayWithArray:formatting];
+    
+    while (format.count < entries.count) {
+      [format addObject:[format lastObject]];
+    }
+    [self.formatArray addObject:format];
+  }
+}
+
 - (void)replaceRow:(int)index withArray:(NSMutableArray*)replaceArray{
   
   //user tried to replace a new entry which is over the limit. add instead of replace
@@ -113,6 +129,9 @@
 
 /// attribute to count styles for cells
 @property(nonatomic,readwrite) NSUInteger styleCounter;
+
+/// options for the work sheet
+@property(nonatomic,retain) NSDictionary *workSheetOptions;
 
 @end
 
@@ -155,6 +174,17 @@
 	if ([[styleInfo allKeys] count]==0) {
 		return @"";
 	}
+  
+  //replace the all with other keys
+  if ([styleInfo objectForKey:GSS_BORDER_ALL_KEY]) {
+    NSMutableDictionary *dictionary =[NSMutableDictionary dictionaryWithDictionary:styleInfo];
+    [dictionary setObject:[styleInfo objectForKey:GSS_BORDER_ALL_KEY] forKey:GSS_BORDER_BOTTOM_KEY];
+    [dictionary setObject:[styleInfo objectForKey:GSS_BORDER_ALL_KEY] forKey:GSS_BORDER_TOP_KEY];
+    [dictionary setObject:[styleInfo objectForKey:GSS_BORDER_ALL_KEY] forKey:GSS_BORDER_RIGHT_KEY];
+    [dictionary setObject:[styleInfo objectForKey:GSS_BORDER_ALL_KEY] forKey:GSS_BORDER_LEFT_KEY];
+    [dictionary removeObjectForKey:GSS_BORDER_ALL_KEY];
+    return [self parseStyle:dictionary forID:styleID forName:name];
+  }
 	
 	NSString *styleString = [NSString stringWithFormat:@"\t<Style ss:ID=\"%@\"%@>\n",styleID,name];
 	
@@ -333,6 +363,11 @@
     styleString = [NSString stringWithFormat:@"%@%@",styleString,borderString];
   }
   
+  //add custom code
+  if ([styleInfo objectForKey:GSS_CUSTOM_KEY]&&[[styleInfo objectForKey:GSS_CUSTOM_KEY] isKindOfClass:[NSString class]]) {
+    styleString = [NSString stringWithFormat:@"%@\t\t%@\n",styleString,[styleInfo objectForKey:GSS_CUSTOM_KEY]];
+  }
+  
 	//add end tag
 	styleString = [NSString stringWithFormat:@"%@\t</Style>\n",styleString];
 	
@@ -441,6 +476,30 @@
 	self.columnSizeList = list;
 }
 
+
+- (void)setSheetOptions:(NSDictionary*)options{
+  self.workSheetOptions = options;
+}
+
+- (NSString*)parseWorkSheetOptions:(NSDictionary*)options{
+  if (options&&[options isKindOfClass:[NSDictionary class]]) {
+    
+    NSString *sheetOptionString = @"<WorksheetOptions xmlns=\"urn:schemas-microsoft-com:office:excel\"><FitToPage />";
+    if ([options objectForKey:GSS_WSO_ZOOM_KEY]) {
+      sheetOptionString = [sheetOptionString stringByAppendingString:[NSString stringWithFormat:@"<Zoom>%@</Zoom>",[options objectForKey:GSS_WSO_ZOOM_KEY]]];
+    }
+    
+    //optional stuff
+    if ([options objectForKey:GSS_WSO_CUSTOM_KEY]) {
+      sheetOptionString = [sheetOptionString stringByAppendingString:[options objectForKey:GSS_WSO_CUSTOM_KEY]];
+    }
+    
+    return [sheetOptionString stringByAppendingString:@"</WorksheetOptions>"];
+  }else{
+    return @"";
+  }
+}
+
 - (GSSheetObject*)addSheet:(NSString*)sheetName{
   
   //check wether sheet name already exist
@@ -483,7 +542,7 @@
   [dataStream appendString:[NSString stringWithFormat:@"\t<Created>%@</Created>\n</DocumentProperties>\n",[NSDate date]]];
   
   //add styles for date (week day)
-  [dataStream appendString:@"\n<Styles>\t<Style ss:ID=\"s1\"><NumberFormat ss:Format=\"ddd\"/></Style>\n"];
+  [dataStream appendString:@"\n<Styles>\n"];
   
   //add default styles if available
   if (self.defaultStyle) {
@@ -551,7 +610,13 @@
         }else if([item isKindOfClass:[NSNumber class]]){
           //item is a number
           typeString = @"Number";
-          contentData = item;
+          
+          //only allow if there is now cellconfigurations (macros)
+          if (cellConfiguration && [cellConfiguration length]>0) {
+            contentData = [NSString stringWithFormat:@"%@",item];
+          }else{
+            contentData = item;
+          }
         }else if([item isKindOfClass:[NSDate class]]){
           //item is a date
           typeString = @"DateTime";
@@ -597,6 +662,11 @@
     
     //end table
     [dataStream appendString:@"</Table>\n"];
+    
+    //if wsheet options are available add them
+    if (self.workSheetOptions) {
+      [dataStream appendString:[self parseWorkSheetOptions:self.workSheetOptions]];
+    }
     
     [dataStream appendString:@"</Worksheet>\n"];
   }

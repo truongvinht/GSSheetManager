@@ -73,11 +73,19 @@
 #define GSS_BORDER_BOTTOM_KEY @"borderBottom"
 #define GSS_BORDER_RIGHT_KEY @"borderRight"
 #define GSS_BORDER_LEFT_KEY @"borderLeft"
+#define GSS_BORDER_ALL_KEY @"borderAll"
 
 ///fixed number to x,xx
 #define GSS_NUMBER_FIXED @"fixedNumber"
 
+///add custom format
+#define GSS_CUSTOM_KEY @"custom"
 
+///zoom level for the work sheet window
+#define GSS_WSO_ZOOM_KEY @"zoom"
+
+///custom work sheet setting
+#define GSS_WSO_CUSTOM_KEY @"custom"
 
 /*! The Sheet object representates a sheet in the spreadsheet.*/
 @interface GSSheetObject : NSObject
@@ -118,6 +126,13 @@
  */
 - (void)addRow:(NSMutableArray*)entries withConfigurations:(NSMutableArray*)configurations;
 
+/** Method to add a row with entries and using configurations
+ *  @param entries an array with NSNumber objects as number and NSString as string
+ *  @param configurations contains links and cell configurations
+ *  @param formatting contains cell formatting, if it contains one item, then it works for the whole row
+ */
+- (void)addRow:(NSMutableArray*)entries withConfigurations:(NSMutableArray*)configurations withFormatting:(NSArray*)formatting;
+
 /** Method to replace a row with new antries
  *  @param index is the row position
  *  @param replaceArray is the new content
@@ -153,6 +168,11 @@
  *	@param list is an array with NSNumbers regarding to its size
  */
 - (void)setColumnSize:(NSArray*)list;
+
+/** Method to set worksheet Options
+ *  @param options is a dictionary with more options for the displaying
+ */
+- (void)setSheetOptions:(NSDictionary*)options;
 
 /** Method to add a new sheetpage
  *  @param sheetName is the new name of the sheet
