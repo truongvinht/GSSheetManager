@@ -461,6 +461,9 @@
 }
 
 - (NSData*)generateSheet{
+  
+  //reset style counter
+  _styleCounter = 0;
   NSMutableString *dataStream = [[NSMutableString alloc] init];
   
   //write meta header for spreadsheet
