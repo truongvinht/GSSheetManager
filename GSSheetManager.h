@@ -28,6 +28,56 @@
 
 #import <Foundation/Foundation.h>
 
+///constants for style the cell
+
+///font size key
+#define GSS_SIZE_KEY @"size"
+
+///font name key
+#define GSS_FONTNAME_KEY @"fontName"
+
+///font color
+#define GSS_COLOR_KEY @"color"
+
+///font is bold
+#define GSS_BOLD_KEY @"bold"
+
+///font is italic
+#define GSS_ITALIC_KEY @"italic"
+
+///font is underlined
+#define GSS_UNDERLINE_KEY @"underline"
+
+///cell background color in HEX (e.g #000000 = black)
+#define GSS_BGCOLOR_KEY @"backgroundColor"
+
+/// horizontal key
+#define GSS_HORIZONTAL_KEY @"horizontalAlignment"
+#define GSS_HORIZONTAL_AUTOMATIC @"Automatic"
+#define GSS_HORIZONTAL_LEFT @"Left"
+#define GSS_HORIZONTAL_CENTER @"Center"
+#define GSS_HORIZONTAL_RIGHT @"Right"
+
+///vertical key
+#define GSS_VERTICAL_KEY @"verticalAlignment"
+#define GSS_VERTICAL_AUTOMATIC @"Automatic"
+#define GSS_VERTICAL_TOP @"Top"
+#define GSS_VERTICAL_CENTER @"Center"
+#define GSS_VERTICAL_BOTTOM @"Bottom"
+
+///wrap the text within cell
+#define GSS_WRAPTEXT_KEY @"wrapText"
+
+///border attributes
+#define GSS_BORDER_TOP_KEY @"borderTop"
+#define GSS_BORDER_BOTTOM_KEY @"borderBottom"
+#define GSS_BORDER_RIGHT_KEY @"borderRight"
+#define GSS_BORDER_LEFT_KEY @"borderLeft"
+
+///fixed number to x,xx
+#define GSS_NUMBER_FIXED @"fixedNumber"
+
+
 
 /*! The Sheet object representates a sheet in the spreadsheet.*/
 @interface GSSheetObject : NSObject
@@ -60,7 +110,7 @@
  *  @param entries an array with NSNumber objects as number and NSString as string
  *  @param formatting contains cell formatting, if it contains one item, then it works for the whole row
  */
-- (void)addRow:(NSMutableArray*)entries withFormatting:(NSMutableArray*)formatting;
+- (void)addRow:(NSMutableArray*)entries withFormatting:(NSArray*)formatting;
 
 /** Method to add a row with entries and using configurations
  *  @param entries an array with NSNumber objects as number and NSString as string

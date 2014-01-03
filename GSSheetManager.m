@@ -27,6 +27,8 @@
 
 #define GSSHEETMNGR_DEFAULT_PATH [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,NSUserDomainMask, YES) objectAtIndex:0]
 
+#define GSS_COLOR_CODE_LENGTH 7
+
 @implementation GSSheetObject
 
 @synthesize sheetName;
@@ -50,7 +52,7 @@
   [self.formatArray addObject:[NSMutableArray array]];
 }
 
-- (void)addRow:(NSMutableArray*)entries withFormatting:(NSMutableArray*)formatting{
+- (void)addRow:(NSMutableArray*)entries withFormatting:(NSArray*)formatting{
   
   [self.array addObject:entries];
   [self.configArray addObject:[NSMutableArray array]];
@@ -119,26 +121,60 @@
 @synthesize authorName;
 @synthesize sheetArray;
 
+/** Wrapper Method for parseStyle Defaults
+ *
+ *  @param styleInfo is the dictionary with all style informations
+ *  @param styleID is the Style ID tag
+ *  @return new style string
+ */
+- (NSString*)parseStyle:(NSDictionary*)styleInfo forID:(NSString*)styleID{
+  return [self parseStyle:styleInfo forID:styleID forName:@""];
+}
+
 /** Helper method to parse the styleInformations
  *
  *  @param styleInfo is the dictionary with all style informations
  *  @param styleID is the Style ID tag
+ *  @param name is the name flag in the style for Default
+ *  @return new style string
  */
-- (NSString*)parseStyle:(NSDictionary*)styleInfo forID:(NSString*)styleID{
+- (NSString*)parseStyle:(NSDictionary*)styleInfo forID:(NSString*)styleID forName:(NSString*)name{
+  
+  //invalid format will be ignored
+  if ([styleInfo isKindOfClass:[NSString class]]||[styleInfo isKindOfClass:[NSNull class]]) {
+    return @"";
+  }
+  
+  //not dictionary format
+  if (![styleInfo isKindOfClass:[NSDictionary class]]) {
+    NSLog(@"GSSheetManager#Bad Format (%@)",NSStringFromClass([styleInfo class]));
+    [NSException raise:@"BadInputException" format:@"The given input is not NSDictionary (%@)",NSStringFromClass([styleInfo class])];
+  }
   
   //remove all defaults
 	if ([[styleInfo allKeys] count]==0) {
 		return @"";
 	}
 	
-	NSString *styleString = [NSString stringWithFormat:@"\t<Style ss:ID=\"%@\">\n",styleID];
+	NSString *styleString = [NSString stringWithFormat:@"\t<Style ss:ID=\"%@\"%@>\n",styleID,name];
 	
 	//set the default font size
 	NSNumber *size = [styleInfo objectForKey:@"size"];
 	NSString *sizeAttribute = @"";
 	if (size) {
-		sizeAttribute = [NSString stringWithFormat:@" ss:size=\"%@\"",size];
-	}
+		sizeAttribute = [NSString stringWithFormat:@" ss:Size=\"%@\"",size];
+	}else{
+    //try to use default style, if available
+    if ((!name || [name length]==0) && self.defaultStyle) {
+      NSArray *splitDefaultStyle = [self.defaultStyle componentsSeparatedByString:@" "];
+      for (NSString *part in splitDefaultStyle) {
+        if ([[part substringToIndex:7] isEqualToString:@"ss:Size"]) {
+          sizeAttribute = [NSString stringWithFormat:@" %@",part];
+          break;
+        }
+      }
+    }
+  }
 	
 	//set the default fontname
 	NSString *fontName = [styleInfo objectForKey:@"fontName"];
@@ -152,6 +188,15 @@
 	NSString *fontColorAttribute = @"";
 	if (fontColor) {
 		fontColorAttribute = [NSString stringWithFormat:@" ss:Color=\"%@\"",fontColor];
+    if ([fontColor length]>0) {
+      if ([fontColor characterAtIndex:0]!='#') {
+        [NSException raise:@"BadInputException" format:@"The value for color style invalid (%@)",fontColor];
+      }
+      
+      if ([fontColor length]>GSS_COLOR_CODE_LENGTH) {
+        [NSException raise:@"BadInputException" format:@"The value for color style is too long (%@)",fontColor];
+      }
+    }
 	}
   
   //set the default font is Bold
@@ -178,38 +223,109 @@
   NSString *backgroundColor = [styleInfo objectForKey:@"backgroundColor"];
   NSString *backgroundAttribute = @"";
   if (backgroundColor) {
-    backgroundAttribute = [NSString stringWithFormat:@"<Interior ss:Color=\"%@\"ss:Pattern=\"Solid\"/>\n",backgroundColor];
+    backgroundAttribute = [NSString stringWithFormat:@"\t\t<Interior ss:Color=\"%@\" ss:Pattern=\"Solid\"/>\n",backgroundColor];
+    
+    if ([backgroundColor length]>0) {
+      if ([backgroundColor characterAtIndex:0]!='#') {
+        [NSException raise:@"BadInputException" format:@"The value for background color style invalid (%@)",backgroundColor];
+      }
+      
+      if ([backgroundColor length]>GSS_COLOR_CODE_LENGTH) {
+        [NSException raise:@"BadInputException" format:@"The value for background color style is too long (%@)",backgroundColor];
+      }
+    }
   }
   
   //concatenate the font string
-	styleString = [NSString stringWithFormat:@"%@\t<ss:Font%@%@%@%@%@%@/>\n%@",
+	styleString = [NSString stringWithFormat:@"%@\t\t<ss:Font%@%@%@%@%@%@/>\n%@",
                  styleString,sizeAttribute,fontNameAttribute,fontColorAttribute,fontBoldAttribute,fontItalicAttribute,fontUnderlineAttribute,backgroundAttribute];
 	
+  //check wether there are alignment informations
+  if (([styleInfo objectForKey:@"horizontalAlignment"]||[styleInfo objectForKey:@"verticalAlignment"])||[styleInfo objectForKey:@"wrapText"]) {
+    NSString *alignmentString = @"\t\t<Alignment";
+    
+    //add horizontal attribute
+    NSString *horizontal = [styleInfo objectForKey:@"horizontalAlignment"];
+    
+    if (horizontal) { // Automatic, Left, Center, Right
+      alignmentString = [NSString stringWithFormat:@"%@ ss:Horizontal=\"%@\"",alignmentString,horizontal];
+    }
+    
+    //add vertical attribute
+    NSString *vertical = [styleInfo objectForKey:@"verticalAlignment"];
+    
+    if (vertical) { // Automatic, Top, Bottom, Center
+      alignmentString = [NSString stringWithFormat:@"%@ ss:Vertical=\"%@\"",alignmentString,vertical];
+    }
+    
+    //add wrapText attribute
+    NSString *wrapText = [styleInfo objectForKey:@"wrapText"];
+    
+    if (wrapText) {
+      alignmentString = [NSString stringWithFormat:@"%@ ss:WrapText=\"%@\"",alignmentString,wrapText];
+    }
+    
+    alignmentString = [alignmentString stringByAppendingString:@" />\n"];
+    styleString = [NSString stringWithFormat:@"%@%@",styleString,alignmentString];
+  }
+  
+  //check wether number should be fixed
+  if ([styleInfo objectForKey:GSS_NUMBER_FIXED]) {
+    styleString = [NSString stringWithFormat:@"%@\t\t<NumberFormat ss:Format=\"Fixed\"/>\n",styleString];
+  }
+  
   //check wether border attributes exists
-  if ([styleInfo objectForKey:@"borderTop"]||[styleInfo objectForKey:@"borderBottom"]||[styleInfo objectForKey:@"borderRight"]||[styleInfo objectForKey:@"borderLeft"]) {
+  if ([styleInfo objectForKey:GSS_BORDER_TOP_KEY]||
+      [styleInfo objectForKey:GSS_BORDER_BOTTOM_KEY]||
+      [styleInfo objectForKey:GSS_BORDER_RIGHT_KEY]||
+      [styleInfo objectForKey:GSS_BORDER_LEFT_KEY]) {
     
     NSString *borderString = @"\t<Borders>\n";
     
     //border size: 0: Hairline, 1: Thin, 2: Medium, 3: Thick
     
     //top border
-    if ([styleInfo objectForKey:@"borderTop"]) {
-      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:@"borderTop"]];
+    if ([styleInfo objectForKey:GSS_BORDER_TOP_KEY]) {
+      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Top\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:GSS_BORDER_TOP_KEY]];
+      
+      if ([[styleInfo objectForKey:GSS_BORDER_TOP_KEY] isKindOfClass:[NSString class]]) {
+        if([[styleInfo objectForKey:GSS_BORDER_TOP_KEY] length]==0){
+          [NSException raise:@"BadInputException" format:@"Top Border Style is too invalid (too short)"];
+        }
+      }
     }
     
     //bottom border
-    if ([styleInfo objectForKey:@"borderBottom"]) {
-      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:@"borderBottom"]];
+    if ([styleInfo objectForKey:GSS_BORDER_BOTTOM_KEY]) {
+      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Bottom\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:GSS_BORDER_BOTTOM_KEY]];
+      
+      if ([[styleInfo objectForKey:GSS_BORDER_BOTTOM_KEY] isKindOfClass:[NSString class]]) {
+        if([[styleInfo objectForKey:GSS_BORDER_BOTTOM_KEY] length]==0){
+          [NSException raise:@"BadInputException" format:@"Bottom Border Style is too invalid (too short)"];
+        }
+      }
     }
     
     //right border
-    if ([styleInfo objectForKey:@"borderRight"]) {
-      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:@"borderRight"]];
+    if ([styleInfo objectForKey:GSS_BORDER_RIGHT_KEY]) {
+      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Right\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:GSS_BORDER_RIGHT_KEY]];
+      
+      if ([[styleInfo objectForKey:GSS_BORDER_RIGHT_KEY] isKindOfClass:[NSString class]]) {
+        if([[styleInfo objectForKey:GSS_BORDER_RIGHT_KEY] length]==0){
+          [NSException raise:@"BadInputException" format:@"Right Border Style is too invalid (too short)"];
+        }
+      }
     }
     
     //left border
-    if ([styleInfo objectForKey:@"borderLeft"]) {
-      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:@"borderLeft"]];
+    if ([styleInfo objectForKey:GSS_BORDER_LEFT_KEY]) {
+      borderString = [NSString stringWithFormat:@"%@\t\t<Border ss:Position=\"Left\" ss:LineStyle=\"Continuous\" ss:Weight=\"%@\"/>\n",borderString,[styleInfo objectForKey:GSS_BORDER_LEFT_KEY]];
+      
+      if ([[styleInfo objectForKey:GSS_BORDER_LEFT_KEY] isKindOfClass:[NSString class]]) {
+        if([[styleInfo objectForKey:GSS_BORDER_LEFT_KEY] length]==0){
+          [NSException raise:@"BadInputException" format:@"Left Border Style is too invalid (too short)"];
+        }
+      }
     }
     
     
@@ -224,6 +340,17 @@
 }
 
 - (NSString*)getStyleForDict:(NSDictionary*)style{
+  
+  //invalid format will be ignored
+  if ([style isKindOfClass:[NSString class]]||[style isKindOfClass:[NSNull class]]) {
+    return @"";
+  }
+  
+  //not dictionary format
+  if (![style isKindOfClass:[NSDictionary class]]) {
+    NSLog(@"GSSheetManager#Bad Format (%@)",NSStringFromClass([style class]));
+    [NSException raise:@"BadInputException" format:@"The given input is not NSDictionary (%@)",NSStringFromClass([style class])];
+  }
   
   //no style
   if (!style||[[style allKeys] count]==0) {
@@ -247,9 +374,21 @@
 
 /** Method to get the style ID
  *  @param style is the dictionary with chosen style
+ *  @throws BadInputException if the input is not a NSDictionary
  *  @return the Style ID as string and starting with GS
  */
 - (NSString*)getStyleID:(NSDictionary*)style{
+  
+  //invalid format will be ignored
+  if ([style isKindOfClass:[NSString class]]||[style isKindOfClass:[NSNull class]]) {
+    return @"";
+  }
+  
+  //not dictionary format
+  if (![style isKindOfClass:[NSDictionary class]]) {
+    NSLog(@"GSSheetManager#Bad Format (%@)",NSStringFromClass([style class]));
+    [NSException raise:@"BadInputException" format:@"The given input is not NSDictionary (%@)",NSStringFromClass([style class])];
+  }
   
   //no style
   if (!style||[[style allKeys] count]==0) {
@@ -287,67 +426,12 @@
 
 -(void)setDefaultFontStyle:(NSDictionary*)defaultStyle{
 	
+  NSString *styleString = [self parseStyle:defaultStyle forID:@"Default" forName:@" ss:Name=\"Normal\""];
+  
   //remove all defaults
-	if ([[defaultStyle allKeys] count]==0) {
+	if ([styleString length]==0) {
 		self.defaultStyle = nil;
 	}
-	
-	NSString *styleString = @"\t<Style ss:ID=\"Default\" ss:Name=\"Normal\">\n";
-	
-	//set the default font size
-	NSNumber *size = [defaultStyle objectForKey:@"size"];
-	NSString *sizeAttribute = @"";
-	if (size) {
-		sizeAttribute = [NSString stringWithFormat:@" ss:size=\"%@\"",size];
-	}
-	
-	//set the default fontname
-	NSString *fontName = [defaultStyle objectForKey:@"fontName"];
-	NSString *fontNameAttribute = @"";
-	if (fontName) {
-		fontNameAttribute = [NSString stringWithFormat:@" ss:FontName=\"%@\" x:Family=\"Swiss\"",fontName];
-	}
-  
-	//set the default font color
-	NSString *fontColor = [defaultStyle objectForKey:@"color"];
-	NSString *fontColorAttribute = @"";
-	if (fontColor) {
-		fontColorAttribute = [NSString stringWithFormat:@" ss:Color=\"%@\"",fontColor];
-	}
-  
-  //set the default font is Bold
-	NSString *fontBold = [defaultStyle objectForKey:@"bold"];
-	NSString *fontBoldAttribute = @"";
-	if (fontBold) {
-		fontBoldAttribute = [NSString stringWithFormat:@" ss:Bold=\"1\""];
-	}
-  
-  //set the default font is Bold
-	NSString *fontItalic = [defaultStyle objectForKey:@"italic"];
-	NSString *fontItalicAttribute = @"";
-	if (fontItalic) {
-		fontItalicAttribute = [NSString stringWithFormat:@" ss:Italic=\"1\""];
-	}
-  
-  //set the default font is underlined
-	NSString *fontUnderline = [defaultStyle objectForKey:@"underline"];
-	NSString *fontUnderlineAttribute = @"";
-	if (fontUnderline) {
-		fontUnderlineAttribute = [NSString stringWithFormat:@" ss:Underline=\"1\""];
-	}
-  
-  NSString *backgroundColor = [defaultStyle objectForKey:@"backgroundColor"];
-  NSString *backgroundAttribute = @"";
-  if (backgroundColor) {
-    backgroundAttribute = [NSString stringWithFormat:@"<Interior ss:Color=\"%@\"ss:Pattern=\"Solid\"/>\n",backgroundColor];
-  }
-  
-  //concatenate the font string
-	styleString = [NSString stringWithFormat:@"%@\t<ss:Font%@%@%@%@%@%@/>\n%@",
-                 styleString,sizeAttribute,fontNameAttribute,fontColorAttribute,fontBoldAttribute,fontItalicAttribute,fontUnderlineAttribute,backgroundAttribute];
-	
-	//add end tag
-	styleString = [NSString stringWithFormat:@"%@\t</Style>\n",styleString];
 	
 	self.defaultStyle = styleString;
 }
@@ -389,11 +473,11 @@
   
   //only set author if available
   if(self.authorName){
-    [dataStream appendString:[NSString stringWithFormat:@"<Author>%@</Author>",self.authorName]];
+    [dataStream appendString:[NSString stringWithFormat:@"\t<Author>%@</Author>\n",self.authorName]];
   }
   
   //set created date
-  [dataStream appendString:[NSString stringWithFormat:@"<Created>%@</Created></DocumentProperties>\n",[NSDate date]]];
+  [dataStream appendString:[NSString stringWithFormat:@"\t<Created>%@</Created>\n</DocumentProperties>\n",[NSDate date]]];
   
   //add styles for date (week day)
   [dataStream appendString:@"\n<Styles>\t<Style ss:ID=\"s1\"><NumberFormat ss:Format=\"ddd\"/></Style>\n"];
@@ -418,7 +502,7 @@
     }
   }
   
-	[dataStream appendString:@"</Styles>\n"];
+	[dataStream appendString:@"</Styles>\n\n"];
   
   //write every sheet page
   for (int i=0;i<self.sheetArray.count;i++) {
@@ -433,13 +517,13 @@
     //add column size if available
     if (self.columnSizeList) {
       for (int c=0; c<self.columnSizeList.count; c++) {
-        [dataStream appendString:[NSString stringWithFormat:@"<Column ss:AutoFitWidth=\"0\" ss:Width=\"%@\"/>\n",[self.columnSizeList objectAtIndex:c]]];
+        [dataStream appendString:[NSString stringWithFormat:@"\t<Column ss:AutoFitWidth=\"0\" ss:Width=\"%@\"/>\n",[self.columnSizeList objectAtIndex:c]]];
       }
     }
     
     for (int j=0; j<sheet.array.count; j++) {
       //get the row
-      [dataStream appendString:@"<Row>"];
+      [dataStream appendString:@"\t<Row>\n"];
       
       for (int k=0; k < [[sheet.array objectAtIndex:j] count]; k++) {
         //get the single cell item
@@ -475,6 +559,7 @@
           }
           
         }else if([item isKindOfClass:[NSNull class]]){
+          //unknown type will treat as string
           typeString = @"String";
         }
         
@@ -491,13 +576,20 @@
         
         //allow short links in the cell as cell configuration
         if (typeString) {
-          NSString *completeCellString = [NSString stringWithFormat:@"<Cell%@><Data ss:Type=\"%@\">%@</Data></Cell>\n",cellConfiguration,typeString,contentData];
-          [dataStream appendString:completeCellString];
+          if ([typeString isEqualToString:@"String"]&&[contentData length]==0) {
+            //no content available
+            [dataStream appendString:@"\t\t<Cell />\n"];
+          }else{
+            
+            NSString *completeCellString = [NSString stringWithFormat:@"\t\t<Cell%@><Data ss:Type=\"%@\">%@</Data></Cell>\n",cellConfiguration,typeString,contentData];
+            [dataStream appendString:completeCellString];
+          }
+          
         }
         
       }
       
-      [dataStream appendString:@"</Row>\n"];
+      [dataStream appendString:@"\t</Row>\n"];
     }
     
     //end table
