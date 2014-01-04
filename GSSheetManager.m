@@ -598,7 +598,7 @@
         
         //add cell configuration if available
         if ([sheet.array count]==[sheet.configArray count]) {
-          if ([[sheet.array objectAtIndex:j] count]==[[sheet.configArray objectAtIndex:j] count]) {
+          if (k<[[sheet.configArray objectAtIndex:j] count]) {
             cellConfiguration = [[sheet.configArray objectAtIndex:j] objectAtIndex:k];
           }
         }
@@ -607,6 +607,7 @@
         if([item isKindOfClass:[NSString class]]){
           typeString = @"String";
           contentData = item;
+          
         }else if([item isKindOfClass:[NSNumber class]]){
           //item is a number
           typeString = @"Number";
