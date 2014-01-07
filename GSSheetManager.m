@@ -45,6 +45,9 @@
   return self;
 }
 
+- (void)setColumnSize:(NSArray*)list{
+	self.columnSizeList = list;
+}
 
 - (void)addRow:(NSMutableArray*)entries{
   [self.array addObject:entries];
@@ -117,9 +120,6 @@
 
 /// name of the author
 @property(nonatomic,retain) NSString *authorName;
-
-/// column size
-@property(nonatomic,retain) NSArray *columnSizeList;
 
 /// default style
 @property(nonatomic,retain) NSString *defaultStyle;
@@ -472,11 +472,6 @@
 }
 
 
-- (void)setColumnSize:(NSArray*)list{
-	self.columnSizeList = list;
-}
-
-
 - (void)setSheetOptions:(NSDictionary*)options{
   self.workSheetOptions = options;
 }
@@ -577,9 +572,9 @@
     [dataStream appendString:@"<Table>\n"];
 	  
     //add column size if available
-    if (self.columnSizeList) {
-      for (int c=0; c<self.columnSizeList.count; c++) {
-        [dataStream appendString:[NSString stringWithFormat:@"\t<Column ss:AutoFitWidth=\"0\" ss:Width=\"%@\"/>\n",[self.columnSizeList objectAtIndex:c]]];
+    if (sheet.columnSizeList) {
+      for (int c=0; c<sheet.columnSizeList.count; c++) {
+        [dataStream appendString:[NSString stringWithFormat:@"\t<Column ss:AutoFitWidth=\"0\" ss:Width=\"%@\"/>\n",[sheet.columnSizeList objectAtIndex:c]]];
       }
     }
     

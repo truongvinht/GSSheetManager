@@ -102,12 +102,20 @@
 /// list with rows of formatting cells
 @property(nonatomic,strong) NSMutableArray *formatArray;
 
+/// column size
+@property(nonatomic,retain) NSArray *columnSizeList;
+
 #pragma mark Methods in GSSheetObject
 
 /** Method to init a new sheet object
  *  @param name is the title of the sheet
  */
 - (id)initWithSheetName:(NSString*)name;
+
+/** Method to set the width of the column
+ *	@param list is an array with NSNumbers regarding to its size
+ */
+- (void)setColumnSize:(NSArray*)list;
 
 /** Method to add a row with entries
  *  @param entries an array with NSNumber objects as number and NSString as string
@@ -163,11 +171,6 @@
  *	@param defaultStyle is a dictionary which carries all attributes (size,fontName,color,bold,italic,underline, backgroundColor)
  */
 -(void)setDefaultFontStyle:(NSDictionary*)defaultStyle;
-
-/** Method to set the width of the column
- *	@param list is an array with NSNumbers regarding to its size
- */
-- (void)setColumnSize:(NSArray*)list;
 
 /** Method to set worksheet Options
  *  @param options is a dictionary with more options for the displaying
